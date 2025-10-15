@@ -1,353 +1,206 @@
-# frozen_string_literal: true
-
-# ==================== Game Configuration Constants ====================
-# Modify these values to customize your tower defense game!
+# ===================================================================
+# RITUAL KEEPER - Constants & Configuration
+# ===================================================================
 
 module Constants
-  # ==================== Map Configuration ====================
-  MAP_WIDTH = 20        # Number of tiles wide
-  MAP_HEIGHT = 15       # Number of tiles tall
-  TILE_WIDTH = 64       # Isometric tile width in pixels
-  TILE_HEIGHT = 32      # Isometric tile height in pixels
+  # ==================== Screen ====================
+  SCREEN_W = 1280
+  SCREEN_H = 720
+  CENTER_X = SCREEN_W / 2
+  CENTER_Y = SCREEN_H / 2
   
-  # ==================== Camera Settings ====================
-  CAMERA_SPEED = 5      # Pixels per frame for camera movement
-  ZOOM_MIN = 0.5
-  ZOOM_MAX = 2.0
-  ZOOM_SPEED = 0.1
+  # ==================== Colors ====================
+  COLORS = {
+    # UI Colors
+    background: { r: 20, g: 15, b: 30 },
+    ui_primary: { r: 150, g: 100, b: 200 },
+    ui_secondary: { r: 100, g: 80, b: 150 },
+    ui_highlight: { r: 255, g: 200, b: 100 },
+    ui_error: { r: 255, g: 50, b: 50 },
+    ui_success: { r: 100, g: 255, b: 100 },
+    text_primary: { r: 240, g: 240, b: 255 },
+    text_secondary: { r: 180, g: 180, b: 200 },
+    text_dim: { r: 120, g: 120, b: 140 },
+    
+    # Element Colors
+    fire: { r: 255, g: 100, b: 0 },
+    water: { r: 100, g: 150, b: 255 },
+    earth: { r: 139, g: 90, b: 43 },
+    air: { r: 200, g: 220, b: 255 },
+    moon: { r: 220, g: 220, b: 255 },
+    sun: { r: 255, g: 220, b: 50 },
+    shadow: { r: 80, g: 50, b: 120 },
+    light: { r: 255, g: 255, b: 240 },
+    
+    # Special Effects
+    energy: { r: 200, g: 150, b: 255 },
+    ritual_circle: { r: 150, g: 100, b: 200 }
+  }
   
-  # ==================== Game Balance ====================
-  STARTING_GOLD = 500
-  STARTING_LIVES = 20
-  
-  # ==================== Enemy Definitions ====================
-  # Define different enemy types with their properties
-  ENEMY_TYPES = {
-    basic: {
-      name: "Goblin",
-      health: 100,
-      speed: 2.0,           # Tiles per second
-      gold_reward: 10,
-      score_value: 10,
-      sprite_path: 'sprites/UFO/UFO(1).png',  # ← Removed leading slash
-      size: 20
+  # ==================== Elements ====================
+  ELEMENTS = {
+    fire: {
+      name: "Fire",
+      color: COLORS[:fire],
+      symbol: "△",
+      unlock_level: 1,
+      description: "The element of passion and transformation"
     },
-    
-    fast: {
-      name: "Wolf",
-      health: 60,
-      speed: 4.0,
-      gold_reward: 15,
-      score_value: 20,
-      sprite_path: 'sprites/UFO/UFO(3).png',
-      size: 20
+    water: {
+      name: "Water",
+      color: COLORS[:water],
+      symbol: "▽",
+      unlock_level: 2,
+      description: "The element of flow and purification"
     },
-    
-    tank: {
-      name: "Troll",
-      health: 300,
-      speed: 1.0,
-      gold_reward: 30,
-      score_value: 40,
-      sprite_path: 'sprites/UFO/UFO(5).png',
-      size: 20
+    earth: {
+      name: "Earth",
+      color: COLORS[:earth],
+      symbol: "■",
+      unlock_level: 3,
+      description: "The element of stability and growth"
     },
-    
-    flying: {
-      name: "Bat",
-      health: 50,
-      speed: 3.0,
-      gold_reward: 20,
-      score_value: 30,
-      sprite_path: 'sprites/UFO/UFO(6).png',
-      size: 20,             # ← FIXED: Added missing comma
-      flying: true          # Can't be hit by ground-only towers
+    air: {
+      name: "Air",
+      color: COLORS[:air],
+      symbol: "○",
+      unlock_level: 4,
+      description: "The element of thought and breath"
     },
-    
-    boss: {
-      name: "Dragon",
-      health: 1000,
-      speed: 0.8,
-      gold_reward: 100,
-      score_value: 200,
-      sprite_path: 'sprites/UFO/UFO(8).png',
-      size: 40              # ← No comma needed (last item)
+    moon: {
+      name: "Moon",
+      color: COLORS[:moon],
+      symbol: "☽",
+      unlock_level: 5,
+      description: "The celestial force of mystery"
+    },
+    sun: {
+      name: "Sun",
+      color: COLORS[:sun],
+      symbol: "☼",
+      unlock_level: 7,
+      description: "The celestial force of vitality"
+    },
+    shadow: {
+      name: "Shadow",
+      color: COLORS[:shadow],
+      symbol: "◆",
+      unlock_level: 9,
+      description: "The hidden element of secrets"
+    },
+    light: {
+      name: "Light",
+      color: COLORS[:light],
+      symbol: "✦",
+      unlock_level: 12,
+      description: "The divine element of clarity"
     }
   }
   
-  # ==================== Tower Definitions ====================
-  # Define different tower types with their properties
-  TOWER_TYPES = {
-    archer: {
-      name: "Archer Tower",
-      cost: 100,
-      damage: 25,
-      range: 3.5,           # In tiles
-      fire_rate: 1.0,       # Attacks per second
-      projectile_speed: 8.0,
-      projectile_type: :arrow,
-      can_hit_flying: true,
-      upgrade_cost: 75,
-      sprite_path: 'sprites/Towers/Archer/archer_level_1.png'
-    },
-    
-    cannon: {
-      name: "Cannon Tower",
-      cost: 200,
-      damage: 75,
-      range: 4.0,
-      fire_rate: 0.5,
-      projectile_speed: 6.0,
-      projectile_type: :cannonball,
-      splash_radius: 1.5,   # Tiles - deals damage in area
-      can_hit_flying: false,
-      upgrade_cost: 150,
-      sprite_path: 'sprites/Towers/Archer/archer_level_1.png'
-    },
-    
-    mage: {
-      name: "Mage Tower",
-      cost: 150,
-      damage: 40,
-      range: 4.5,
-      fire_rate: 1.2,
-      projectile_speed: 10.0,
-      projectile_type: :magic_bolt,
-      slow_effect: 0.5,     # Slows enemy by 50% for 2 seconds
-      slow_duration: 120,   # 2 seconds at 60 fps
-      can_hit_flying: true,
-      upgrade_cost: 100,
-      sprite_path: 'sprites/Towers/Barrack/barrack_level_1 (1).png'
-    },
-    
-    sniper: {
-      name: "Sniper Tower",
-      cost: 300,
-      damage: 200,
-      range: 7.0,
-      fire_rate: 0.3,
-      projectile_speed: 15.0,
-      projectile_type: :bullet,
-      can_hit_flying: true,
-      upgrade_cost: 250,
-      sprite_path: 'sprites/Towers/Wizard/wizard_level_1.png'
-    }
+  # ==================== Ritual Circle ====================
+  RITUAL_CIRCLE = {
+    center_x: CENTER_X,
+    center_y: CENTER_Y,
+    radius: 200,
+    node_radius: 100,
+    node_size: 60,
+    max_nodes: 8
   }
   
-  # ==================== Projectile Visuals ====================
-  PROJECTILE_VISUALS = {
-    arrow: {
-      size: 8,
-      sprite_path: 'sprites/Towers/Archer/arrow.png',
-      trail: true
-    },
-    
-    cannonball: {
-      size: 12,
-      sprite_path: 'sprites/Towers/Wizard/wizard_bullet.png',
-      trail: false
-    },
-    
-    magic_bolt: {
-      size: 10,
-      sprite_path: 'sprites/Towers/Barrack/sword.png',
-      trail: true,
-      glow: true
-    },
-    
-    bullet: {
-      size: 6,
-      sprite_path: 'sprites/Towers/Archer/arrow.png',
-      trail: true
-    }
+  # ==================== Timing ====================
+  TIMING = {
+    node_activation_time: 45,  # frames (0.75 seconds)
+    energy_flow_speed: 0.03,   # per frame
+    particle_lifetime: 60,      # frames (1 second)
+    ritual_completion_delay: 120, # frames (2 seconds)
+    fade_in_time: 30,          # frames
+    fade_out_time: 30          # frames
   }
   
-  # ==================== Wave Configuration ====================
-  # Define enemy waves - each wave spawns enemies over time
-  WAVE_DEFINITIONS = [
-    # Wave 1 - Tutorial wave
-    {
-      enemies: [
-        { type: :basic, count: 10, spawn_interval: 60 }  # 1 enemy per second
-      ]
-    },
-    
-    # Wave 2 - Mix of basics and fast
-    {
-      enemies: [
-        { type: :basic, count: 8, spawn_interval: 45 },
-        { type: :fast, count: 5, spawn_interval: 60 }
-      ]
-    },
-    
-    # Wave 3 - Introduce tank
-    {
-      enemies: [
-        { type: :basic, count: 12, spawn_interval: 40 },
-        { type: :fast, count: 6, spawn_interval: 50 },
-        { type: :tank, count: 2, spawn_interval: 120 }
-      ]
-    },
-    
-    # Wave 4 - Flying enemies
-    {
-      enemies: [
-        { type: :basic, count: 10, spawn_interval: 35 },
-        { type: :flying, count: 8, spawn_interval: 45 }
-      ]
-    },
-    
-    # Wave 5 - Boss wave
-    {
-      enemies: [
-        { type: :basic, count: 15, spawn_interval: 30 },
-        { type: :fast, count: 10, spawn_interval: 40 },
-        { type: :tank, count: 3, spawn_interval: 90 },
-        { type: :boss, count: 1, spawn_interval: 180 }
-      ]
-    }
-  ]
-  
-  # After wave 5, generate procedural waves with increasing difficulty
-  WAVE_SCALE_FACTOR = 1.2  # Each wave gets 20% harder
-  
-  # ==================== Path Definition ====================
-  # Define the path enemies follow (in tile coordinates)
-  # This creates an S-shaped path through the map
-  ENEMY_PATH = [
-    [1, 7],
-    [5, 7],
-    [5, 10],
-    [10, 10],
-    [10, 5],
-    [15, 5],
-    [15, 7],
-    [19, 7]
-  ]
-  
-  # ==================== Buildable Tiles ====================
-  # Define which tiles can have towers (1 = buildable, 0 = path/blocked)
-  # This is a simple example - you can make this as complex as you want
-  def self.tile_buildable?(tile_x, tile_y)
-    # Can't build on path tiles
-    ENEMY_PATH.each do |path_tile|
-      return false if (path_tile[0] - tile_x).abs <= 1 && (path_tile[1] - tile_y).abs <= 1
-    end
-    
-    # Can't build out of bounds
-    return false if tile_x < 0 || tile_x >= MAP_WIDTH
-    return false if tile_y < 0 || tile_y >= MAP_HEIGHT
-    
-    true
-  end
-  
-  # ==================== UI Colors & Styling ====================
-  UI_COLORS = {
-    background: { r: 20, g: 20, b: 30 },
-    panel: { r: 40, g: 40, b: 50 },
-    text: { r: 255, g: 255, b: 255 },
-    text_dim: { r: 150, g: 150, b: 150 },
-    gold: { r: 255, g: 215, b: 0 },
-    health: { r: 255, g: 100, b: 100 },
-    button: { r: 60, g: 60, b: 80 },
-    button_hover: { r: 80, g: 80, b: 120 },
-    button_disabled: { r: 40, g: 40, b: 40 }
+  # ==================== Gameplay ====================
+  GAMEPLAY = {
+    starting_energy: 100,
+    starting_focus: 100,
+    energy_per_node: 10,
+    energy_regen_rate: 0.5,   # per frame
+    focus_decay_rate: 0.3,    # per frame when active
+    perfect_bonus: 50,
+    speed_bonus_threshold: 120 # frames (2 seconds)
   }
   
-  # ==================== Tile Types ====================
-  TILE_TYPES = {
-    grass: { r: 80, g: 140, b: 60 },
-    path: { r: 120, g: 100, b: 80 },
-    buildable: { r: 100, g: 120, b: 80 },
-    blocked: { r: 60, g: 60, b: 60 }
-  }
-  
-  # ==================== Sound Effects (placeholders) ====================
-  # In a full implementation, these would reference actual sound files
-  SOUNDS = {
-    tower_build: "sounds/build.wav",
-    tower_shoot: "sounds/shoot.wav",
-    enemy_hit: "sounds/hit.wav",
-    enemy_death: "sounds/death.wav",
-    wave_start: "sounds/wave_start.wav",
-    wave_complete: "sounds/wave_complete.wav",
-    game_over: "sounds/game_over.wav",
-    background_music: "sounds/music.wav"
-  }
-  
-  # ==================== Particle Effects ====================
-  PARTICLE_CONFIGS = {
-    explosion: {
+  # ==================== Particle Settings ====================
+  PARTICLES = {
+    node_activation: {
       count: 20,
-      life: 30,
-      spread: 50,
-      colors: [
-        { r: 255, g: 100, b: 0 },
-        { r: 255, g: 200, b: 0 },
-        { r: 255, g: 50, b: 0 }
-      ]
-    },
-    
-    magic: {
-      count: 15,
-      life: 20,
       spread: 30,
-      colors: [
-        { r: 150, g: 150, b: 255 },
-        { r: 200, g: 200, b: 255 }
-      ]
+      speed_min: 2,
+      speed_max: 5,
+      lifetime: 60
     },
-    
-    death: {
-      count: 10,
-      life: 25,
-      spread: 40,
-      colors: [
-        { r: 200, g: 0, b: 0 },
-        { r: 150, g: 0, b: 0 }
-      ]
+    energy_flow: {
+      count: 5,
+      spread: 5,
+      speed_min: 1,
+      speed_max: 3,
+      lifetime: 30
+    },
+    ritual_complete: {
+      count: 100,
+      spread: 100,
+      speed_min: 3,
+      speed_max: 8,
+      lifetime: 90
+    },
+    ritual_fail: {
+      count: 50,
+      spread: 50,
+      speed_min: 2,
+      speed_max: 6,
+      lifetime: 60
     }
   }
   
-  # ==================== Helper Methods ====================
+  # ==================== Sound Settings ====================
+  SOUNDS = {
+    enabled: true,
+    music_volume: 0.5,
+    sfx_volume: 0.7
+  }
   
-  # Get enemy definition by type
-  def self.enemy(type)
-    ENEMY_TYPES[type]
-  end
-  
-  # Get tower definition by type
-  def self.tower(type)
-    TOWER_TYPES[type]
-  end
-  
-  # Get projectile visual by type
-  def self.projectile(type)
-    PROJECTILE_VISUALS[type]
-  end
-  
-  # Get wave definition by wave number
-  def self.wave(wave_num)
-    if wave_num <= WAVE_DEFINITIONS.length
-      WAVE_DEFINITIONS[wave_num - 1]
-    else
-      # Generate procedural wave
-      generate_procedural_wave(wave_num)
-    end
-  end
-  
-  # Generate increasingly difficult waves after predefined ones
-  def self.generate_procedural_wave(wave_num)
-    difficulty = (wave_num - WAVE_DEFINITIONS.length) * WAVE_SCALE_FACTOR
-    
-    {
-      enemies: [
-        { type: :basic, count: (10 * difficulty).to_i, spawn_interval: 30 },
-        { type: :fast, count: (5 * difficulty).to_i, spawn_interval: 40 },
-        { type: :tank, count: (2 * difficulty).to_i, spawn_interval: 80 },
-        { type: :flying, count: (4 * difficulty).to_i, spawn_interval: 50 },
-        { type: :boss, count: (difficulty / 2).to_i, spawn_interval: 200 }
-      ]
-    }
-  end
+  # ==================== Debug ====================
+  DEBUG = {
+    show_fps: false,
+    show_node_coords: false,
+    show_chain_state: false,
+    unlock_all_rituals: false
+  }
 end
+
+# Helper method to get color with optional alpha
+def color_with_alpha(color_hash, alpha = 255)
+  color_hash.merge(a: alpha)
+end
+
+# Helper to lerp between two values
+def lerp(a, b, t)
+  a + (b - a) * t
+end
+
+# Helper to lerp colors
+def lerp_color(color_a, color_b, t)
+  {
+    r: lerp(color_a[:r], color_b[:r], t).to_i,
+    g: lerp(color_a[:g], color_b[:g], t).to_i,
+    b: lerp(color_a[:b], color_b[:b], t).to_i
+  }
+end
+
+# Calculate position on circle
+def circle_position(center_x, center_y, radius, angle)
+  {
+    x: center_x + Math.cos(angle) * radius,
+    y: center_y + Math.sin(angle) * radius
+  }
+end
+
+puts "✓ Constants loaded"

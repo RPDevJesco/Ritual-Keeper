@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-# EventChains Design Pattern Implementation
-# Lightweight version optimized for DragonRuby GTK
+# ===================================================================
+# EventChains Design Pattern - DragonRuby Implementation
+# ===================================================================
 
 # ==================== Event Context ====================
 
@@ -273,76 +274,6 @@ class EventChain
       end
     rescue StandardError => e
       EventResult.failure(e)
-    end
-  end
-end
-
-# ==================== Middleware ====================
-
-module Middleware
-  class Timing
-    def initialize(threshold_ms: nil)
-      @threshold_ms = threshold_ms
-    end
-
-    def call(next_step)
-      ->(evt, ctx) do
-        start_time = Time.now
-        result = next_step.call(evt, ctx)
-        elapsed = ((Time.now - start_time) * 1000).round(2)
-        
-        if @threshold_ms && elapsed > @threshold_ms
-          puts "⚠️  #{evt.class.name} took #{elapsed}ms (threshold: #{@threshold_ms}ms)"
-        end
-        
-        result
-      end
-    end
-  end
-
-  class Metrics
-    attr_reader :metrics
-
-    def initialize
-      @metrics = {
-        total_events: 0,
-        successful_events: 0,
-        failed_events: 0,
-        total_duration_ms: 0
-      }
-    end
-
-    def call(next_step)
-      ->(evt, ctx) do
-        @metrics[:total_events] += 1
-        
-        start_time = Time.now
-        result = next_step.call(evt, ctx)
-        duration = ((Time.now - start_time) * 1000).round(2)
-        
-        @metrics[:total_duration_ms] += duration
-        
-        if result.success?
-          @metrics[:successful_events] += 1
-        else
-          @metrics[:failed_events] += 1
-        end
-        
-        result
-      end
-    end
-
-    def report
-      puts "\n" + "=" * 50
-      puts "Chain Metrics"
-      puts "=" * 50
-      puts "Total Events: #{@metrics[:total_events]}"
-      puts "Successful: #{@metrics[:successful_events]}"
-      puts "Failed: #{@metrics[:failed_events]}"
-      puts "Total Duration: #{@metrics[:total_duration_ms].round(2)}ms"
-      avg = @metrics[:total_events] > 0 ? (@metrics[:total_duration_ms] / @metrics[:total_events]).round(2) : 0
-      puts "Average Duration: #{avg}ms"
-      puts "=" * 50 + "\n"
     end
   end
 end
