@@ -1,4 +1,4 @@
-# 🕯️ RITUAL KEEPER - Project Summary
+# 🕯️ RITUAL KEEPER
 
 ## 🎮 What Is This?
 
