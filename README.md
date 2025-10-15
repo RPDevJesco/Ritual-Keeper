@@ -32,10 +32,6 @@
 ```
 ritual_keeper/
 │
-├── 📖 README.md                    (5,300 lines) - Complete documentation
-├── 🚀 QUICK_START.md              (1,700 lines) - Installation & first steps
-├── 🔧 TECHNICAL_DEEP_DIVE.md      (4,100 lines) - EventChains deep dive
-│
 ├── app/                            Main game code
 │   ├── main.rb                    (200 lines)  - Game loop & entry point
 │   ├── event_chains.rb            (220 lines)  - EventChains pattern core
@@ -206,8 +202,6 @@ Using only primitive shapes, we created:
 - `args.outputs.labels` - Text
 - Math for circles/animations
 
-This proves you can make beautiful games with just primitives!
-
 ---
 
 ## 🔧 Extensibility Examples
@@ -298,143 +292,11 @@ All events now get a score multiplier!
 
 ---
 
-## 🎯 Success Criteria
-
-This project succeeds if you:
-
-### As a Player
-- [ ] Complete at least 5 rituals
-- [ ] Achieve a perfect ritual
-- [ ] Reach level 5
-- [ ] Try both STRICT and LENIENT modes
-
-### As a Student
-- [ ] Understand how EventChains work
-- [ ] Can explain fault tolerance modes
-- [ ] Recognize when to use the pattern
-- [ ] Follow the context flow
-
-### As a Developer
-- [ ] Can add a new ritual
-- [ ] Can create a new event type
-- [ ] Understand the rendering system
-- [ ] Can modify gameplay constants
-
----
-
-## 🌟 Showcase Features
-
-**This game demonstrates:**
-
-1. **EventChains Pattern**
-   - Real-world implementation
-   - Multiple fault tolerance modes
-   - Interactive + automated events
-   - Clear benefit demonstration
-
-2. **DragonRuby Mastery**
-   - Scene management
-   - Primitive rendering
-   - State persistence
-   - Particle systems
-   - Input handling
-
-3. **Clean Architecture**
-   - Separated concerns
-   - Testable components
-   - Clear data flow
-   - Extensible design
-
-4. **Production Polish**
-   - Multiple difficulty levels
-   - Progression system
-   - Visual feedback
-   - Player guidance
-   - Debug tools
-
----
-
-## 📚 Documentation Quality
-
-### README.md (5,300 lines)
-- Complete game manual
-- How to play guide
-- Technical details
-- Extension guide
-- Full controls reference
-
-### QUICK_START.md (1,700 lines)
-- Installation steps
-- Troubleshooting
-- First ritual walkthrough
-- Customization hints
-- Help resources
-
-### TECHNICAL_DEEP_DIVE.md (4,100 lines)
-- Pattern explanation
-- Code examples
-- Data flow diagrams
-- Testing strategies
-- Extension patterns
-
-**Total Documentation: ~11,100 lines**
-
-More documentation than code! (3:1 ratio)
-
----
-
-## 🎉 Final Thoughts
-
-**Ritual Keeper is more than a game - it's a complete learning experience.**
-
-You get:
-- ✅ A fun game to play
-- ✅ A reference implementation to study
-- ✅ A codebase to extend
-- ✅ A pattern to learn
-- ✅ A foundation to build on
-
-Whether you're:
-- Learning game development
-- Studying design patterns
-- Exploring DragonRuby
-- Teaching programming
-- Building your own game
-
-**Ritual Keeper has something for you!**
-
----
-
-## 🚀 Next Steps
-
-1. **Play the game** - Understand the mechanics
-2. **Read the code** - See how it works
-3. **Make changes** - Learn by doing
-4. **Build your own** - Apply the pattern
-5. **Share your creation** - Teach others!
-
----
-
 ## 📞 Resources
 
 - **DragonRuby**: https://dragonruby.org
 - **DragonRuby Discord**: https://discord.dragonruby.org
 - **DragonRuby Docs**: https://docs.dragonruby.org
-- **EventChains Deep Dive**: See included markdown file
+- **EventChains Deep Dive**: https://github.com/RPDevJesco/EventChains-DragonRuby
 
 ---
-
-## 🎮 Ready to Begin?
-
-```ruby
-def start_your_journey
-  puts "🕯️  Welcome to Ritual Keeper!"
-  puts "📚 Read QUICK_START.md to begin"
-  puts "🎮 Master the rituals"
-  puts "🔧 Study the code"
-  puts "🚀 Build your own game"
-  puts "✨ Share what you learned"
-end
-
-start_your_journey
-```
