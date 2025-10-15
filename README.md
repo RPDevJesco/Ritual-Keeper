@@ -48,8 +48,6 @@ ritual_keeper/
 ├── sprites/                        (Empty - primitives only!)
 ├── sounds/                         (Empty - for future expansion)
 └── fonts/                          (Empty - uses default)
-
-TOTAL: ~2,600 lines of game code + 1,200 lines of docs = ~3,800 lines
 ```
 
 ---
