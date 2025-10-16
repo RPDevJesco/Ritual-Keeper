@@ -1,5 +1,5 @@
 # ===================================================================
-# RITUAL KEEPER - Game State Manager
+# RITUAL KEEPER - Game State Manager (QTE Edition)
 # ===================================================================
 
 class GameState
@@ -23,13 +23,8 @@ class GameState
   # ===================================================================
 
   def available_rituals
-    # In debug mode, unlock all rituals
-    if Constants::DEBUG[:unlock_all_rituals]
-      return RitualDefinitions::ALL_RITUALS
-    end
-
-    # Otherwise, only show rituals for current level
-    RitualDefinitions.rituals_for_level(@player_level)
+    # ALL RITUALS AVAILABLE FROM START - No level gating!
+    RitualDefinitions::ALL_RITUALS
   end
 
   # ===================================================================
@@ -84,7 +79,9 @@ class GameState
         score: score,
         time: @current_ritual.completion_time,
         perfect: @current_ritual.perfect?,
-        ritual_name: @current_ritual.ritual_def[:name]
+        ritual_name: @current_ritual.ritual_def[:name],
+        hits: @current_ritual.successful_qtes,
+        misses: @current_ritual.failed_qtes
       }
     end
 
@@ -95,7 +92,9 @@ class GameState
     @result_data = {
       success: false,
       score: 0,
-      ritual_name: @current_ritual&.ritual_def&.[](:name) || "Unknown"
+      ritual_name: @current_ritual&.ritual_def&.[](:name) || "Unknown",
+      hits: @current_ritual&.successful_qtes || 0,
+      misses: @current_ritual&.failed_qtes || 0
     }
     transition_to(:results)
   end
@@ -106,12 +105,13 @@ class GameState
 end
 
 # ===================================================================
-# ACTIVE RITUAL - Manages a ritual in progress
+# ACTIVE RITUAL - QTE-Based Ritual System
 # ===================================================================
 
 class ActiveRitual
   attr_reader :ritual_def, :chain, :context, :state, :nodes,
-              :current_step, :score, :completion_time
+              :current_step, :score, :completion_time,
+              :successful_qtes, :failed_qtes, :current_qte
 
   def initialize(args, ritual_def)
     @args = args
@@ -120,6 +120,12 @@ class ActiveRitual
     @current_step = 0
     @start_time = args.tick_count
     @completion_time = 0
+    @successful_qtes = 0
+    @failed_qtes = 0
+    @current_qte = nil
+
+    # QTE timing based on difficulty
+    @qte_window = calculate_qte_window(ritual_def[:difficulty])
 
     # Create event chain based on fault tolerance
     @chain = case ritual_def[:fault_tolerance]
@@ -142,6 +148,21 @@ class ActiveRitual
     initialize_ritual
   end
 
+  # ===================================================================
+  # QTE TIMING CALCULATION
+  # ===================================================================
+
+  def calculate_qte_window(difficulty)
+    # Difficulty 1-10, with stricter timing for higher difficulties
+    base_window = 120 # frames (2 seconds)
+    reduction = (difficulty - 1) * 8
+    [base_window - reduction, 30].max # Minimum 0.5 seconds
+  end
+
+  # ===================================================================
+  # INITIALIZATION
+  # ===================================================================
+
   def initialize_ritual
     # Create initialization chain
     init_chain = EventChain.strict
@@ -158,27 +179,169 @@ class ActiveRitual
       @context = result.data
       @nodes = @context[:nodes]
       @state = :ready
+      spawn_next_qte
     else
       @state = :failed
       puts "❌ Failed to initialize ritual: #{result.failures.first&.error_message}"
     end
   end
 
+  # ===================================================================
+  # QTE SYSTEM
+  # ===================================================================
+
+  def spawn_next_qte
+    return if @current_step >= @ritual_def[:sequence].length
+
+    # Get the required element for this step
+    required_element = @ritual_def[:sequence][@current_step]
+
+    # Find all nodes with this element (there should be at least one)
+    matching_nodes = @nodes.select { |_, node| node[:element] == required_element }
+
+    if matching_nodes.empty?
+      puts "⚠️  No nodes found for element #{required_element}"
+      @state = :failed
+      return
+    end
+
+    # Pick a random matching node
+    node_id = matching_nodes.keys.sample
+
+    @current_qte = {
+      node_id: node_id,
+      element: required_element,
+      spawn_time: @args.tick_count,
+      window: @qte_window,
+      state: :active
+    }
+
+    @nodes[node_id][:state] = :pending
+    @state = :waiting_for_input
+  end
+
+  def check_qte_timeout
+    return unless @current_qte && @current_qte[:state] == :active
+
+    elapsed = @args.tick_count - @current_qte[:spawn_time]
+
+    if elapsed >= @current_qte[:window]
+      # Timeout! QTE failed
+      fail_current_qte
+    end
+  end
+
+  def attempt_qte(node_id)
+    return unless @current_qte && @current_qte[:state] == :active
+
+    if node_id == @current_qte[:node_id]
+      # Correct node clicked in time!
+      complete_current_qte
+    else
+      # Wrong node clicked
+      fail_current_qte
+    end
+  end
+
+  def complete_current_qte
+    return unless @current_qte
+
+    node = @nodes[@current_qte[:node_id]]
+    node[:state] = :completed
+    @successful_qtes += 1
+    @current_step += 1
+
+    # Calculate time bonus based on how fast they clicked
+    elapsed = @args.tick_count - @current_qte[:spawn_time]
+    speed_ratio = 1.0 - (elapsed.to_f / @current_qte[:window])
+    @context[:time_bonus] = (@context[:time_bonus] || 0) + (speed_ratio * 10).to_i
+
+    # Spawn success particles
+    spawn_node_activation_particles(
+      @args,
+      node[:x],
+      node[:y],
+      Constants::ELEMENTS[node[:element]][:color]
+    )
+
+    @current_qte = nil
+
+    # Check if ritual is complete
+    if @current_step >= @ritual_def[:sequence].length
+      @state = :completing
+      check_completion
+    else
+      # Spawn next QTE after brief delay
+      @state = :qte_delay
+      @qte_delay_start = @args.tick_count
+    end
+  end
+
+  def fail_current_qte
+    return unless @current_qte
+
+    node = @nodes[@current_qte[:node_id]]
+    node[:state] = :failed
+    @failed_qtes += 1
+
+    # Spawn failure particles
+    spawn_ritual_failure_particles(@args, node[:x], node[:y])
+
+    # Reset node to inactive after brief delay
+    @args.state.ritual_reset_nodes ||= []
+    @args.state.ritual_reset_nodes << {
+      node_id: @current_qte[:node_id],
+      reset_at: @args.tick_count + 30
+    }
+
+    @current_qte = nil
+
+    # Check failure conditions
+    if @ritual_def[:fault_tolerance] == :strict && @failed_qtes > 0
+      @state = :failed
+    elsif @failed_qtes >= 3 # Maximum 3 failures in lenient mode
+      @state = :failed
+    else
+      # Continue to next QTE
+      @state = :qte_delay
+      @qte_delay_start = @args.tick_count
+    end
+  end
+
+  # ===================================================================
+  # UPDATE LOOP
+  # ===================================================================
+
   def update(args)
     return if @state == :completed || @state == :failed
 
-    case @state
-    when :ready
-      handle_player_input(args)
-    when :channeling
-      update_channeling
-    when :completing
-      check_completion
+    # Handle node reset timers
+    if args.state.ritual_reset_nodes
+      args.state.ritual_reset_nodes.each do |reset_info|
+        if args.tick_count >= reset_info[:reset_at]
+          @nodes[reset_info[:node_id]][:state] = :inactive
+        end
+      end
+      args.state.ritual_reset_nodes.reject! { |r| args.tick_count >= r[:reset_at] }
     end
 
-    # Update energy and focus
-    update_resources
+    case @state
+    when :waiting_for_input
+      handle_player_input(args)
+      check_qte_timeout
+    when :qte_delay
+      # Brief pause between QTEs
+      if args.tick_count - @qte_delay_start >= 30
+        spawn_next_qte
+      end
+    when :completing
+      # Already handled in complete_current_qte
+    end
   end
+
+  # ===================================================================
+  # INPUT HANDLING
+  # ===================================================================
 
   def handle_player_input(args)
     # Check if player clicks a node
@@ -186,18 +349,17 @@ class ActiveRitual
       clicked_node = find_clicked_node(args.inputs.mouse.x, args.inputs.mouse.y)
 
       if clicked_node
-        activate_node(clicked_node)
+        attempt_qte(clicked_node)
       end
     end
 
     # Keyboard shortcuts for nodes (1-8)
-    # DragonRuby uses word names for number keys
     number_keys = [:one, :two, :three, :four, :five, :six, :seven, :eight]
     number_keys.each_with_index do |key_name, index|
       if args.inputs.keyboard.key_down.send(key_name)
         node_id = index
         if @nodes[node_id]
-          activate_node(node_id)
+          attempt_qte(node_id)
         end
       end
     end
@@ -216,117 +378,41 @@ class ActiveRitual
     nil
   end
 
-  def activate_node(node_id)
-    node = @nodes[node_id]
-    return unless node
-    return unless node[:state] == :inactive
-
-    # Check if this is the next correct node
-    expected_element = @ritual_def[:sequence][@current_step]
-
-    if node[:element] == expected_element
-      # Correct node!
-      node[:state] = :active
-      @state = :channeling
-      @channeling_node = node_id
-      @channel_start = @args.tick_count
-
-      # Spawn particles
-      spawn_node_activation_particles(
-        @args,
-        node[:x],
-        node[:y],
-        Constants::ELEMENTS[node[:element]][:color]
-      )
-
-      # Consume energy
-      @context[:energy] -= Constants::GAMEPLAY[:energy_per_node]
-    else
-      # Wrong node!
-      @context[:energy] -= 20
-      spawn_ritual_failure_particles(@args, node[:x], node[:y])
-
-      if @ritual_def[:fault_tolerance] == :strict
-        @state = :failed
-      end
-    end
-  end
-
-  def update_channeling
-    return unless @channeling_node
-
-    node = @nodes[@channeling_node]
-    elapsed = @args.tick_count - @channel_start
-    duration = Constants::TIMING[:node_activation_time]
-
-    node[:progress] = (elapsed / duration.to_f).clamp(0, 1)
-
-    # Spawn energy particles periodically
-    if elapsed % 5 == 0
-      color = Constants::ELEMENTS[node[:element]][:color]
-      spawn_energy_flow_particles(@args, node[:x], node[:y], color)
-    end
-
-    # Decay focus while channeling
-    @context[:focus] -= Constants::GAMEPLAY[:focus_decay_rate]
-
-    if @context[:focus] <= 0 && @ritual_def[:fault_tolerance] == :strict
-      @state = :failed
-      return
-    end
-
-    # Check if channeling complete
-    if elapsed >= duration
-      node[:state] = :completed
-      @context[:energy] += 5  # Small energy restore
-      @current_step += 1
-
-      # Check if ritual is complete
-      if @current_step >= @ritual_def[:sequence].length
-        @state = :completing
-      else
-        @state = :ready
-      end
-
-      @channeling_node = nil
-    end
-  end
+  # ===================================================================
+  # COMPLETION
+  # ===================================================================
 
   def check_completion
-    # All nodes completed
     calculate_final_score
     @state = :completed
+
+    # Spawn celebration particles
+    spawn_ritual_completion_particles(
+      @args,
+      Constants::RITUAL_CIRCLE[:center_x],
+      Constants::RITUAL_CIRCLE[:center_y]
+    )
   end
 
   def calculate_final_score
     base_score = 100
 
-    # Energy bonus
-    energy_bonus = (@context[:energy] / 2).to_i
+    # Accuracy bonus
+    total_attempts = @successful_qtes + @failed_qtes
+    accuracy = @successful_qtes.to_f / [total_attempts, 1].max
+    accuracy_bonus = (accuracy * 100).to_i
 
-    # Focus bonus
-    focus_bonus = (@context[:focus] / 2).to_i
+    # Time bonus (accumulated from fast QTE responses)
+    time_bonus = @context[:time_bonus] || 0
 
-    # Time bonus
-    @completion_time = @args.tick_count - @start_time
-    time_bonus = @completion_time < Constants::GAMEPLAY[:speed_bonus_threshold] ? 50 : 0
-
-    # Perfect bonus (no errors)
+    # Perfect bonus (no failures)
     perfect_bonus = perfect? ? Constants::GAMEPLAY[:perfect_bonus] : 0
 
-    @score = base_score + energy_bonus + focus_bonus + time_bonus + perfect_bonus
-  end
+    # Difficulty multiplier
+    difficulty_multiplier = 1.0 + (@ritual_def[:difficulty] * 0.1)
 
-  def update_resources
-    # Regenerate energy slowly
-    @context[:energy] += Constants::GAMEPLAY[:energy_regen_rate]
-    @context[:energy] = @context[:energy].clamp(0, Constants::GAMEPLAY[:starting_energy])
-
-    # Focus stays at max when not channeling
-    if @state != :channeling
-      @context[:focus] += 0.5
-      @context[:focus] = @context[:focus].clamp(0, Constants::GAMEPLAY[:starting_focus])
-    end
+    @completion_time = @args.tick_count - @start_time
+    @score = ((base_score + accuracy_bonus + time_bonus + perfect_bonus) * difficulty_multiplier).to_i
   end
 
   def completed?
@@ -334,13 +420,19 @@ class ActiveRitual
   end
 
   def failed?
-    @state == :failed || @context[:energy] <= 0
+    @state == :failed
   end
 
   def perfect?
-    # No errors and all nodes completed successfully
-    @context[:failures]&.empty? && completed?
+    @failed_qtes == 0 && completed?
+  end
+
+  def qte_progress
+    return 0 unless @current_qte && @current_qte[:state] == :active
+
+    elapsed = @args.tick_count - @current_qte[:spawn_time]
+    (elapsed.to_f / @current_qte[:window]).clamp(0, 1)
   end
 end
 
-puts "✓ Game state loaded"
+puts "✓ Game state loaded (QTE Edition)"

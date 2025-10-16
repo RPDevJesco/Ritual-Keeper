@@ -1,5 +1,5 @@
 # ===================================================================
-# RITUAL KEEPER - Renderer
+# RITUAL KEEPER - Renderer (QTE Edition)
 # ===================================================================
 
 # ===================================================================
@@ -59,7 +59,7 @@ def render_menu(args)
   args.outputs.labels << {
     x: Constants::CENTER_X,
     y: 520,
-    text: "Master the Ancient Arts",
+    text: "QTE Edition - Test Your Reflexes",
     size_enum: 5,
     alignment_enum: 1,
     **Constants::COLORS[:text_secondary]
@@ -103,7 +103,7 @@ def render_ritual_select(args)
   args.outputs.labels << {
     x: Constants::CENTER_X,
     y: 680,
-    text: "Select a Ritual",
+    text: "Select a Ritual - All Unlocked!",
     size_enum: 10,
     alignment_enum: 1,
     **Constants::COLORS[:text_primary]
@@ -124,10 +124,32 @@ def render_ritual_select(args)
     **Constants::COLORS[:text_secondary]
   }
 
-  # Ritual list
-  start_y = 550
-  rituals.each_with_index do |ritual, i|
-    y = start_y - (i * 60)
+  # Scrolling parameters
+  max_visible_rituals = 7
+  item_height = 60
+  start_y = 580
+
+  # Calculate scroll offset to keep selected item visible
+  selected_index = game.selected_ritual_index
+  scroll_offset = 0
+
+  if selected_index >= max_visible_rituals
+    scroll_offset = selected_index - max_visible_rituals + 1
+  end
+
+  # Clamp scroll offset
+  max_scroll = [rituals.length - max_visible_rituals, 0].max
+  scroll_offset = scroll_offset.clamp(0, max_scroll)
+
+  # Visible ritual range
+  visible_start = scroll_offset
+  visible_end = [scroll_offset + max_visible_rituals, rituals.length].min
+
+  # Ritual list (only visible items)
+  (visible_start...visible_end).each do |i|
+    ritual = rituals[i]
+    visible_index = i - visible_start
+    y = start_y - (visible_index * item_height)
     selected = i == game.selected_ritual_index
 
     # Selection highlight
@@ -148,11 +170,22 @@ def render_ritual_select(args)
       **color
     }
 
-    # Difficulty
+    # Difficulty with timing indicator
     diff_text = "★" * ritual[:difficulty]
+    timing_text = case ritual[:difficulty]
+                  when 1..2
+                    " (Easy Timing)"
+                  when 3..5
+                    " (Moderate)"
+                  when 6..7
+                    " (Fast!)"
+                  else
+                    " (EXTREME!)"
+                  end
+
     args.outputs.labels << {
       x: 120, y: y - 20,
-      text: diff_text,
+      text: diff_text + timing_text,
       size_enum: 0,
       **Constants::COLORS[:text_dim]
     }
@@ -177,13 +210,48 @@ def render_ritual_select(args)
     }
   end
 
+  # Scroll indicators
+  if scroll_offset > 0
+    # Up arrow indicator
+    args.outputs.labels << {
+      x: Constants::CENTER_X,
+      y: 620,
+      text: "▲ More Above",
+      size_enum: 0,
+      alignment_enum: 1,
+      **Constants::COLORS[:text_dim]
+    }
+  end
+
+  if scroll_offset < max_scroll
+    # Down arrow indicator
+    args.outputs.labels << {
+      x: Constants::CENTER_X,
+      y: 160,
+      text: "▼ More Below",
+      size_enum: 0,
+      alignment_enum: 1,
+      **Constants::COLORS[:text_dim]
+    }
+  end
+
+  # Ritual counter
+  args.outputs.labels << {
+    x: Constants::SCREEN_W - 20,
+    y: 670,
+    text: "#{selected_index + 1}/#{rituals.length}",
+    size_enum: 2,
+    alignment_enum: 2,
+    **Constants::COLORS[:text_secondary]
+  }
+
   # Selected ritual description
   if rituals[game.selected_ritual_index]
     ritual = rituals[game.selected_ritual_index]
 
     args.outputs.labels << {
       x: Constants::CENTER_X,
-      y: 100,
+      y: 120,
       text: ritual[:description],
       size_enum: 2,
       alignment_enum: 1,
@@ -203,7 +271,7 @@ def render_ritual_select(args)
 end
 
 # ===================================================================
-# GAMEPLAY SCENE
+# GAMEPLAY SCENE (QTE Edition)
 # ===================================================================
 
 def render_gameplay(args)
@@ -233,13 +301,19 @@ def render_gameplay(args)
 
   # Draw nodes
   ritual.nodes.each do |id, node|
+    # Highlight the current QTE target
+    is_qte_target = ritual.current_qte &&
+                    ritual.current_qte[:node_id] == id &&
+                    ritual.current_qte[:state] == :active
+
     draw_ritual_node(
       args,
       node[:x],
       node[:y],
       node[:element],
       node[:state],
-      Constants::RITUAL_CIRCLE[:node_size] / 2
+      Constants::RITUAL_CIRCLE[:node_size] / 2,
+      is_qte_target
     )
 
     # Draw node number
@@ -251,6 +325,11 @@ def render_gameplay(args)
       alignment_enum: 1,
       **Constants::COLORS[:text_dim]
     }
+
+    # Draw QTE indicator on target node
+    if is_qte_target
+      draw_qte_indicator(args, node[:x], node[:y], ritual.qte_progress)
+    end
   end
 
   # Draw connections between completed nodes
@@ -273,30 +352,22 @@ def render_gameplay(args)
     end
   end
 
-  # Resource bars
-  draw_resource_bar(
-    args,
-    20, 620,
-    "Energy",
-    ritual.context[:energy],
-    Constants::GAMEPLAY[:starting_energy],
-    Constants::COLORS[:energy]
-  )
-
-  draw_resource_bar(
-    args,
-    20, 580,
-    "Focus",
-    ritual.context[:focus],
-    Constants::GAMEPLAY[:starting_focus],
-    Constants::COLORS[:ui_primary]
-  )
-
-  # Progress
-  progress_text = "#{ritual.current_step} / #{ritual.ritual_def[:steps]}"
+  # Progress bar
+  progress_pct = (ritual.current_step.to_f / ritual.ritual_def[:steps] * 100).to_i
   args.outputs.labels << {
     x: 20, y: 550,
-    text: "Progress: #{progress_text}",
+    text: "Progress: #{ritual.current_step}/#{ritual.ritual_def[:steps]} (#{progress_pct}%)",
+    size_enum: 2,
+    **Constants::COLORS[:text_secondary]
+  }
+
+  # Accuracy stats
+  total_attempts = ritual.successful_qtes + ritual.failed_qtes
+  accuracy = total_attempts > 0 ? (ritual.successful_qtes.to_f / total_attempts * 100).to_i : 100
+
+  args.outputs.labels << {
+    x: 20, y: 520,
+    text: "Hits: #{ritual.successful_qtes} | Misses: #{ritual.failed_qtes} | Accuracy: #{accuracy}%",
     size_enum: 2,
     **Constants::COLORS[:text_secondary]
   }
@@ -304,9 +375,11 @@ def render_gameplay(args)
   # State indicator
   state_text = case ritual.state
                when :ready
-                 "Click a node or press keys 1-8"
-               when :channeling
-                 "Channeling..."
+                 "Get Ready..."
+               when :waiting_for_input
+                 "CLICK THE GLOWING NODE!"
+               when :qte_delay
+                 "Next node incoming..."
                when :completing
                  "Ritual Complete!"
                when :failed
@@ -315,9 +388,14 @@ def render_gameplay(args)
                  ""
                end
 
-  state_color = ritual.state == :failed ?
-                  Constants::COLORS[:ui_error] :
+  state_color = case ritual.state
+                when :failed
+                  Constants::COLORS[:ui_error]
+                when :waiting_for_input
                   Constants::COLORS[:ui_highlight]
+                else
+                  Constants::COLORS[:ui_primary]
+                end
 
   args.outputs.labels << {
     x: Constants::CENTER_X,
@@ -332,10 +410,56 @@ def render_gameplay(args)
   args.outputs.labels << {
     x: Constants::CENTER_X,
     y: 20,
-    text: "ESC to quit",
+    text: "Click nodes or press 1-8 | ESC to quit",
     size_enum: 0,
     alignment_enum: 1,
     **Constants::COLORS[:text_dim]
+  }
+end
+
+# ===================================================================
+# QTE INDICATOR
+# ===================================================================
+
+def draw_qte_indicator(args, x, y, progress)
+  # Shrinking ring around the node
+  remaining = 1.0 - progress
+  size = 40 + (remaining * 30)
+
+  # Color transitions from green to yellow to red as time runs out
+  color = if remaining > 0.6
+            { r: 100, g: 255, b: 100 }
+          elsif remaining > 0.3
+            { r: 255, g: 255, b: 0 }
+          else
+            { r: 255, g: 100, b: 100 }
+          end
+
+  # Outer ring
+  args.outputs.borders << {
+    x: x - size, y: y - size,
+    w: size * 2, h: size * 2,
+    r: color[:r], g: color[:g], b: color[:b],
+    a: 200
+  }
+
+  # Inner ring
+  inner_size = size - 5
+  args.outputs.borders << {
+    x: x - inner_size, y: y - inner_size,
+    w: inner_size * 2, h: inner_size * 2,
+    r: color[:r], g: color[:g], b: color[:b],
+    a: 150
+  }
+
+  # Pulsing effect
+  pulse = (Math.sin(args.tick_count * 0.2) * 5 + 5).to_i
+  pulse_size = size + pulse
+  args.outputs.borders << {
+    x: x - pulse_size, y: y - pulse_size,
+    w: pulse_size * 2, h: pulse_size * 2,
+    r: color[:r], g: color[:g], b: color[:b],
+    a: 100
   }
 end
 
@@ -378,13 +502,26 @@ def render_results(args)
       **Constants::COLORS[:ui_highlight]
     }
 
+    # Stats
+    total_attempts = result[:hits] + result[:misses]
+    accuracy = total_attempts > 0 ? (result[:hits].to_f / total_attempts * 100).to_i : 100
+
+    args.outputs.labels << {
+      x: Constants::CENTER_X,
+      y: 350,
+      text: "Hits: #{result[:hits]} | Misses: #{result[:misses]} | Accuracy: #{accuracy}%",
+      size_enum: 4,
+      alignment_enum: 1,
+      **Constants::COLORS[:text_secondary]
+    }
+
     # Time
     time_seconds = (result[:time] / 60.0).round(1)
     args.outputs.labels << {
       x: Constants::CENTER_X,
-      y: 350,
+      y: 300,
       text: "Time: #{time_seconds}s",
-      size_enum: 4,
+      size_enum: 3,
       alignment_enum: 1,
       **Constants::COLORS[:text_secondary]
     }
@@ -394,7 +531,7 @@ def render_results(args)
       pulse_alpha = ((Math.sin(args.tick_count * 0.15) * 100 + 155).to_i)
       args.outputs.labels << {
         x: Constants::CENTER_X,
-        y: 290,
+        y: 240,
         text: "✨ PERFECT RITUAL ✨",
         size_enum: 6,
         alignment_enum: 1,
@@ -428,6 +565,16 @@ def render_results(args)
       size_enum: 4,
       alignment_enum: 1,
       **Constants::COLORS[:text_secondary]
+    }
+
+    # Stats even on failure
+    args.outputs.labels << {
+      x: Constants::CENTER_X,
+      y: 360,
+      text: "Hits: #{result[:hits]} | Misses: #{result[:misses]}",
+      size_enum: 3,
+      alignment_enum: 1,
+      **Constants::COLORS[:text_dim]
     }
   end
 
@@ -479,6 +626,16 @@ def render_debug(args)
     size_enum: -2,
     r: 100, g: 255, b: 100
   }
+
+  if args.state.game&.current_ritual&.current_qte
+    qte = args.state.game.current_ritual.current_qte
+    args.outputs.labels << {
+      x: 10, y: 650,
+      text: "QTE: Node #{qte[:node_id]} | Window: #{qte[:window]}f | Progress: #{(args.state.game.current_ritual.qte_progress * 100).to_i}%",
+      size_enum: -2,
+      r: 255, g: 255, b: 100
+    }
+  end
 end
 
-puts "✓ Renderer loaded"
+puts "✓ Renderer loaded (QTE Edition)"
