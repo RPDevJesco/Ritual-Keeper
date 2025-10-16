@@ -226,7 +226,7 @@ Potential features for future versions:
 
 ## 🤝 Credits
 
-**Game Design & Programming**: GameDevMadeEasy (Jesse Glover)
+**Game Design & Programming**: RPDevJesco (GameDevMadeEasy)
 
 **Built With**: DragonRuby Game Toolkit
 
@@ -235,15 +235,3 @@ Potential features for future versions:
 ## 📄 License
 
 This game is provided as a demonstration of the EventChains design pattern and DragonRuby game development.
-
-## 🎮 Ready to Begin?
-
-The ancient rituals await. Will you master the elements and become a true Ritual Keeper?
-
-Launch the game, select your first ritual, and let the mystical journey begin!
-
----
-
-*"In the circle of elements, precision is power, and timing is everything."*
-
-🕯️ **May your reflexes be swift and your focus unwavering.** 🕯️
